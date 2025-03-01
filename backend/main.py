@@ -4,6 +4,7 @@ import io
 from utils.image_processing import preprocess_image, extract_text_from_image
 from utils.analysis import analyze_text
 import logging
+from fastapi.middleware.cors import CORSMiddleware
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -12,6 +13,15 @@ app = FastAPI(
     title="Food Label Analyzer API",
     description="API for analyzing food labels using OCR and AI",
     version="1.0.0"
+)
+
+# Add after creating the FastAPI app
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # React dev server
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.post("/analyze-label")

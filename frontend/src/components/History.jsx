@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Paper, 
   Typography, 
@@ -8,14 +8,32 @@ import {
   ListItemAvatar,
   Avatar,
   IconButton,
-  Tooltip,
-  Chip
+  Chip,
+  TextField,
+  Box,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import FastfoodIcon from '@mui/icons-material/Fastfood';
+import EditIcon from '@mui/icons-material/Edit';
+import CheckIcon from '@mui/icons-material/Check';
 import { format } from 'date-fns';
 
-const History = ({ history, onSelectHistory, onDeleteHistory }) => {
+const History = ({ history, onSelectHistory, onDeleteHistory, onNameEdit }) => {
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [editingName, setEditingName] = useState('');
+
+  const handleEditStart = (index, currentName) => {
+    setEditingIndex(index);
+    setEditingName(currentName);
+  };
+
+  const handleEditComplete = (index) => {
+    if (editingName.trim()) {
+      onNameEdit(index, editingName.trim());
+    }
+    setEditingIndex(null);
+  };
+
   const getVerdict = (item) => {
     try {
       const sections = item.analysis.split('\n');
@@ -26,34 +44,10 @@ const History = ({ history, onSelectHistory, onDeleteHistory }) => {
   };
 
   return (
-    <Paper 
-      elevation={3} 
-      sx={{ 
-        p: 2, 
-        mb: 3,
-        borderRadius: 2,
-        background: 'rgba(255, 255, 255, 0.9)',
-        backdropFilter: 'blur(10px)'
-      }}
-    >
-      <Typography 
-        variant="h6" 
-        gutterBottom 
-        sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: 1,
-          fontFamily: "'Poppins', sans-serif",
-          fontWeight: 600
-        }}
-      >
+    <Paper elevation={3} sx={{ p: 2, mb: 3 }}>
+      <Typography variant="h6" gutterBottom>
         Analysis History
-        <Chip 
-          label={`${history.length} items`} 
-          size="small" 
-          color="primary" 
-          sx={{ ml: 1 }} 
-        />
+        <Chip label={`${history.length} items`} size="small" color="primary" sx={{ ml: 1 }} />
       </Typography>
       <List sx={{ maxHeight: 300, overflow: 'auto' }}>
         {history.map((item, index) => {
@@ -63,57 +57,90 @@ const History = ({ history, onSelectHistory, onDeleteHistory }) => {
           return (
             <ListItem 
               key={index}
-              secondaryAction={
-                <Tooltip title="Delete">
-                  <IconButton 
-                    edge="end" 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteHistory(index);
-                    }}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </Tooltip>
-              }
               sx={{
                 cursor: 'pointer',
-                '&:hover': { 
-                  bgcolor: 'rgba(0, 0, 0, 0.04)',
-                  transform: 'translateX(5px)',
-                  transition: 'all 0.3s ease'
-                },
-                borderRadius: 2,
-                mb: 1,
-                transition: 'all 0.3s ease'
+                '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.04)' },
+                flexWrap: 'wrap',
+                gap: 1,
+                pr: 8,
+                position: 'relative'
               }}
               onClick={() => onSelectHistory(item)}
             >
               <ListItemAvatar>
-                <Avatar sx={{ 
-                  bgcolor: isHealthy ? '#2196f3' : '#ff9800',
-                  transition: 'all 0.3s ease'
-                }}>
+                <Avatar sx={{ bgcolor: isHealthy ? 'success.main' : 'error.main' }}>
                   <FastfoodIcon />
                 </Avatar>
               </ListItemAvatar>
-              <ListItemText 
-                primary={item.productName || 'Food Item'}
-                secondary={format(new Date(item.timestamp), 'MMM dd, yyyy HH:mm')}
-                primaryTypographyProps={{
-                  fontFamily: "'Poppins', sans-serif",
-                  fontWeight: 500
-                }}
-              />
+              
+              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                {editingIndex === index ? (
+                  <TextField
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    size="small"
+                    fullWidth
+                    autoFocus
+                    onKeyPress={(e) => e.key === 'Enter' && handleEditComplete(index)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <ListItemText 
+                    primary={item.productName}
+                    secondary={format(new Date(item.timestamp), 'MMM dd, yyyy HH:mm')}
+                    sx={{ mr: 1 }}
+                  />
+                )}
+              </Box>
+
               <Chip 
                 label={verdict}
                 size="small"
-                color={isHealthy ? 'info' : 'warning'}
-                sx={{ 
-                  mr: 2,
-                  fontWeight: 500
-                }}
+                color={isHealthy ? 'success' : 'error'}
+                sx={{ flexShrink: 0 }}
               />
+
+              <Box 
+                sx={{ 
+                  position: 'absolute',
+                  right: 8,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  display: 'flex',
+                  gap: 0.5
+                }}
+              >
+                {editingIndex === index ? (
+                  <IconButton 
+                    size="small" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditComplete(index);
+                    }}
+                  >
+                    <CheckIcon />
+                  </IconButton>
+                ) : (
+                  <IconButton 
+                    size="small" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditStart(index, item.productName);
+                    }}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                )}
+                <IconButton 
+                  size="small" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteHistory(index);
+                  }}
+                >
+                  <DeleteIcon />
+                </IconButton>
+              </Box>
             </ListItem>
           );
         })}

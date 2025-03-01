@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def analyze_text(text):
+def analyze_text(text, health_profile=None):
     """Analyze extracted text using BART for classification and Mixtral for detailed analysis"""
     API_TOKEN = os.getenv("HF_TOKEN")
     
@@ -43,12 +43,33 @@ def analyze_text(text):
                     verdict = result['labels'][0]
                     confidence = result['scores'][0]
                     
+                    # Modify the analysis prompt to include health profile
+                    health_context = ""
+                    if health_profile:
+                        health_context = f"""
+Consider the following health profile while making recommendations:
+- Age: {health_profile.get('age')} years
+- Weight: {health_profile.get('weight')} kg
+- Height: {health_profile.get('height')} cm
+- Gender: {health_profile.get('gender')}
+- Health Conditions: {
+    ', '.join(filter(None, [
+        'Diabetes' if health_profile.get('hasDiabetes') else None,
+        'High Cholesterol' if health_profile.get('hasHighCholesterol') else None,
+        'Heart Condition' if health_profile.get('hasHeartCondition') else None
+    ]))
+}
+- Allergies: {health_profile.get('allergies')}
+- Dietary Restrictions: {health_profile.get('dietaryRestrictions')}
+"""
+
                     # First analysis using Mixtral with focus on nutritional values
                     analysis_prompt = f"""<s>[INST] You are a skilled nutritionist with expertise in dietary planning and nutrition science. 
 
 Given this nutrition facts table:
 
 {text}
+
 
 Provide a professional analysis in exactly 3 bullet points explaining why this food is considered {verdict}. Focus on:
 - Caloric content and serving size
@@ -99,14 +120,18 @@ Format your response as bullet points only, without any introduction or conclusi
                             
                             explanation = '\n'.join(formatted_points[:3])
                             
-                            # Second pass through Mixtral for conclusion and recommendation
-                            conclusion_prompt = f"""<s>[INST] As a nutritionist, based on this nutritional analysis:
+                            # Modify the conclusion prompt to include health profile
+                            conclusion_prompt = f"""<s>[INST] As a nutritionist, based on this nutritional analysis and the following health profile:
 
+{health_context}
+
+Analysis:
 {explanation}
 
 Provide two things:
-1. A one-line conclusion about potential health effects based on these nutritional values
-2. A specific recommendation for serving frequency (daily, weekly, monthly) considering the nutritional content
+1. A one-line conclusion about potential health effects based on these nutritional values and the person's health profile
+2. A specific recommendation for serving frequency (daily, weekly, monthly) considering both the nutritional content and health conditions
+This is the health profile: {health_context}
 
 Format as two short bullet points. [/INST]"""
                             

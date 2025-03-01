@@ -1,10 +1,12 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Body
 from PIL import Image
 import io
 from utils.image_processing import preprocess_image, extract_text_from_image
 from utils.analysis import analyze_text
 import logging
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Optional, Dict
+from pydantic import BaseModel
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -24,8 +26,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+class HealthProfile(BaseModel):
+    age: Optional[int]
+    weight: Optional[float]
+    height: Optional[float]
+    gender: Optional[str]
+    hasDiabetes: Optional[bool]
+    hasHighCholesterol: Optional[bool]
+    hasHeartCondition: Optional[bool]
+    allergies: Optional[str]
+    dietaryRestrictions: Optional[str]
+
 @app.post("/analyze-label")
-async def analyze_label(file: UploadFile = File(...)):
+async def analyze_label(
+    file: UploadFile = File(...),
+    health_profile: Optional[Dict] = Body(None)
+):
     try:
         # Read image file
         contents = await file.read()
@@ -43,8 +59,8 @@ async def analyze_label(file: UploadFile = File(...)):
                 "error": "Could not read the label. Please try a clearer image."
             }
         
-        # Analyze text
-        analysis = analyze_text(extracted_text)
+        # Analyze text with health profile
+        analysis = analyze_text(extracted_text, health_profile)
         
         return {
             "success": True,
